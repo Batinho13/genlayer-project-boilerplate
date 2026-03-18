@@ -27,7 +27,8 @@ class FootballBetsBaTinho(gl.Contract):
     points: TreeMap[Address, u256]
 
     def __init__(self):
-        pass
+    self.bets = TreeMap()
+    self.points = TreeMap()
 
     def _check_match(self, resolution_url: str, team1: str, team2: str) -> dict:
         def get_match_result() -> str:
