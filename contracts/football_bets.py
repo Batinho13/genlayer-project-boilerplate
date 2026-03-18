@@ -91,6 +91,10 @@ This result should be perfectly parsable by a JSON parser without errors.
 
     @gl.public.write
     def resolve_bet(self, bet_id: str) -> None:
+        sender = gl.message.sender_address
+
+if sender not in self.bets or bet_id not in self.bets[sender]:
+    raise Exception("Bet not found")
         if self.bets[gl.message.sender_address][bet_id].has_resolved:
             raise Exception("Bet already resolved")
 
@@ -109,11 +113,20 @@ This result should be perfectly parsable by a JSON parser without errors.
 
         # custom scoring logic
         if bet.real_winner == bet.predicted_winner:
-            self.points[gl.message.sender_address] += 2  # bonus points
-            gl.log("Correct prediction! +2 points (BaTinho version)")
-        else:
-            self.points[gl.message.sender_address] += 0
-            gl.log("Wrong prediction. No points awarded.")
+            if sender not in self.points:
+    self.points[sender] = 0
+
+if bet.real_winner == bet.predicted_winner:
+    bonus = 2
+
+    # custom logic
+    if bet.predicted_winner == "2":
+        bonus = 3
+
+    self.points[sender] += bonus
+    gl.log(f"Correct prediction! +{bonus} points (BaTinho AI version)")
+else:
+    gl.log("Wrong prediction. No points awarded.")
 
     @gl.public.view
     def get_bets(self) -> dict:
