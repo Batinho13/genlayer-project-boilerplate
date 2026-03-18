@@ -1,5 +1,8 @@
 # { "Depends": "py-genlayer:test" }
 
+# Modified by BaTinho
+# Custom version for GenLayer contribution
+
 import json
 from dataclasses import dataclass
 from genlayer import *
@@ -19,7 +22,7 @@ class Bet:
     real_score: str
 
 
-class FootballBets(gl.Contract):
+class FootballBetsBaTinho(gl.Contract):
     bets: TreeMap[Address, TreeMap[str, Bet]]
     points: TreeMap[Address, u256]
 
@@ -41,13 +44,13 @@ Web content:
 Respond in JSON:
 {{
     "score": str, // e.g., "1:2" or "-" if unresolved
-    "winner": int // 0 for draw, -1 if unresolved
+    "winner": int // 0 = draw, 1 = team1, 2 = team2, -1 = unresolved
 }}
 It is mandatory that you respond only using the JSON format above,
 nothing else. Don't include any other words or characters,
 your output must be only JSON without any formatting prefix or suffix.
 This result should be perfectly parsable by a JSON parser without errors.
-        """
+            """
             result = gl.nondet.exec_prompt(task, response_format="json")
             return json.dumps(result, sort_keys=True)
 
@@ -61,11 +64,6 @@ This result should be perfectly parsable by a JSON parser without errors.
         match_resolution_url = (
             "https://www.bbc.com/sport/football/scores-fixtures/" + game_date
         )
-        # commented to allow to test matches in the past.
-        # match_status = await self._check_match(match_resolution_url, team1, team2)
-
-        # if int(match_status["winner"]) > -1:
-        #    raise Exception("Game already finished")
 
         sender_address = gl.message.sender_address
 
@@ -84,7 +82,11 @@ This result should be perfectly parsable by a JSON parser without errors.
             real_winner="",
             real_score="",
         )
+
         self.bets.get_or_insert_default(sender_address)[bet_id] = bet
+
+        # log action
+        gl.log(f"New bet created by {sender_address}")
 
     @gl.public.write
     def resolve_bet(self, bet_id: str) -> None:
@@ -101,10 +103,16 @@ This result should be perfectly parsable by a JSON parser without errors.
         bet.real_winner = str(bet_status["winner"])
         bet.real_score = bet_status["score"]
 
+        if gl.message.sender_address not in self.points:
+            self.points[gl.message.sender_address] = 0
+
+        # custom scoring logic
         if bet.real_winner == bet.predicted_winner:
-            if gl.message.sender_address not in self.points:
-                self.points[gl.message.sender_address] = 0
-            self.points[gl.message.sender_address] += 1
+            self.points[gl.message.sender_address] += 2  # bonus points
+            gl.log("Correct prediction! +2 points (BaTinho version)")
+        else:
+            self.points[gl.message.sender_address] += 0
+            gl.log("Wrong prediction. No points awarded.")
 
     @gl.public.view
     def get_bets(self) -> dict:
